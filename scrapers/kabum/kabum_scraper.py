@@ -1,12 +1,6 @@
+from scrapers.base.BaseScraper import BaseScraper
+
+
 class KabumScraper(BaseScraper):
-    def __init__(self):
-        super().__init__()
-        self.loja = 'kabum'
-        self.url = 'https://www.kabum.com.br'
-        self.headers = {
-            'User-Agent': config.settings.SCRAPER_USER_AGENT,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'pt-BR,pt;q=0.8,en-US;q=0.5,en;q=0.3',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-        }
+    loja = "kabum"
+    url = "https://www.kabum.com.br"
