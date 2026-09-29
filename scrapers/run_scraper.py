@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 def run(site_name: str | None = None) -> None:
     if site_name:
-        scrapers = [SiteFactory.create(site_name)]
+        scrapers = [SiteFactory.criar_site(site_name)]
     else:
-        scrapers = SiteFactory.create_enabled()
+        scrapers = SiteFactory.criar_sites_habilitados()
 
     if not scrapers:
         logger.warning("Nenhum scraper habilitado para executar")

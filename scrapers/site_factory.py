@@ -1,7 +1,7 @@
 import importlib
 import logging
 
-from config.sites import SITE_CATALOG, SiteConfig, enabled_sites, get_site
+from config.sites import SITE_CATALOGO, SiteConfig, pegar_site, sites_habilitados
 from scrapers.base.BaseScraper import BaseScraper
 
 logger = logging.getLogger(__name__)
@@ -33,13 +33,13 @@ class SiteFactory:
         return scraper
 
     @classmethod
-    def criar_site(cls, site_name: str) -> BaseScraper:
-        return cls._build(get_site(site_name))
+    def criar_site(cls, nome_site: str) -> BaseScraper:
+        return cls._build(pegar_site(nome_site))
 
-        @classmethod
-        def criar_sites_habilitados(cls) -> list[BaseScraper]:
-        return [cls._build(site) for site in enabled_sites()]
+    @classmethod
+    def criar_sites_habilitados(cls) -> list[BaseScraper]:
+        return [cls._build(site) for site in sites_habilitados()]
 
     @classmethod
     def disponiveis(cls) -> list[str]:
-        return list(SITE_CATALOG)
+        return list(SITE_CATALOGO)

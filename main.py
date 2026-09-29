@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--site",
-        choices=SiteFactory.available(),
+        choices=SiteFactory.disponiveis(),
         help="Roda só um site do catálogo. Sem este argumento, usa SITES_ENABLED.",
     )
     return parser.parse_args()
