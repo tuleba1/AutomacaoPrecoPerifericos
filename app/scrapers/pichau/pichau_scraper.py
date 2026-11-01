@@ -8,7 +8,7 @@ class PichauScraper(BaseScraper):
         self.headers = {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
                     "image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Encoding": "gzip, deflate",
             "Accept-Language": "pt-BR,pt;q=0.7",
             "Cache-Control": "max-age=0",
             "Priority": "u=0, i",
