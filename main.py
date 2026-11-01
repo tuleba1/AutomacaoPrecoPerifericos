@@ -2,8 +2,8 @@ import argparse
 import logging
 
 from config.settings import SITES_ENABLED
-from scrapers.run_scraper import run
-from scrapers.site_factory import SiteFactory
+from app.scrapers.run_scraper import run
+from app.scrapers.site_factory import SiteFactory
 
 logging.basicConfig(
     level=logging.INFO,

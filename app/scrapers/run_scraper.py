@@ -1,11 +1,15 @@
 import logging
+from config.settings import PRODUCT_NAME
 
-from scrapers.site_factory import SiteFactory
+try:
+    from .site_factory import SiteFactory
+except ImportError:
+    from site_factory import SiteFactory
 
 logger = logging.getLogger(__name__)
 
 
-def run(site_name: str | None = None) -> None:
+def run(site_name: str | None = None) -> list[dict]:
     if site_name:
         scrapers = [SiteFactory.criar_site(site_name)]
     else:
@@ -13,12 +17,27 @@ def run(site_name: str | None = None) -> None:
 
     if not scrapers:
         logger.warning("Nenhum scraper habilitado para executar")
-        return
+        return []
 
+    resultados = []
     for scraper in scrapers:
         logger.info("Iniciando fluxo de %s", scraper.loja)
-        scraper.acessar_caminhos()
-        logger.info("Fluxo de %s finalizado", scraper.loja)
+        resultado = scraper.executar_extracao(PRODUCT_NAME)
+        resultados.append(resultado)
+        if resultado["status"] == "OK":
+            logger.info(
+                "Fluxo de %s finalizado: produto=%s, preco=%s",
+                scraper.loja,
+                resultado["produto"],
+                resultado["preco"],
+            )
+        else:
+            logger.error(
+                "Fluxo de %s interrompido: %s",
+                scraper.loja,
+                resultado["erro"],
+            )
+    return resultados
 
 
 if __name__ == "__main__":

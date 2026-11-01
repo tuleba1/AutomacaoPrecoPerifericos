@@ -22,4 +22,5 @@ class AmazonScraper(BaseScraper):
             "Sec-Ch-Ua-Platform-Version": "15",
             "Upgrade-Insecure-Requests": "1",
         }
-    #AMAZON BLOQUEANDO PARA ACESSAR 
+        super().__init__()
+    #AMAZON BLOQUEANDO PARA ACESSAR
