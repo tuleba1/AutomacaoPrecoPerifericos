@@ -19,6 +19,7 @@ SCRAPER_USER_AGENT = os.getenv(
     "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
 )
 SCRAPER_HEADLESS = os.getenv("SCRAPER_HEADLESS", "true").lower() == "true"
+PRODUCT_NAME = os.getenv("PRODUCT_NAME", "mouse").strip().lower()
 SITES_ENABLED = csv_env(
     "SITES_ENABLED",
     "kabum,pichau,amazon,terabyte",
