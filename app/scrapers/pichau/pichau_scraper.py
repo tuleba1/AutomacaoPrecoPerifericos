@@ -1,3 +1,9 @@
+from urllib.parse import urljoin
+
+from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
+import requests
+
 from scrapers.base.BaseScraper import BaseScraper
 
 
@@ -5,6 +11,9 @@ class PichauScraper(BaseScraper):
     def __init__(self):
         self.loja = "pichau"
         self.url = "https://www.pichau.com.br"
+        self.rgx_pagina_inicial =  (r'(?is)<title>\s*Pichau\s*-\s*'
+        r'Os Melhores Preços do Brasil\s*</title>'
+        )
         self.headers = {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
                     "image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -26,3 +35,18 @@ class PichauScraper(BaseScraper):
                         "(KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
         }
         super().__init__()
+
+
+    def pesquisar_produto(self, produto: str) -> requests.Response:
+        if self._pagina_inicial is None:
+            raise ValueError("A página inicial não foi acessada antes da pesquisa")
+        
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        page = browser.new_page()
+
+        page.goto("https://www.pichau.com.br/perifericos/mouse")
+        page.wait_for_load_state("networkidle")
+
+        
+    browser.close()

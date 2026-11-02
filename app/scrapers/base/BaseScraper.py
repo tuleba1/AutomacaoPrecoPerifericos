@@ -126,7 +126,7 @@ class BaseScraper(BasePesquisa):
             self.logger.error("Erro ao acessar a página de %s: %s", self.loja, exc)
             return None
 
-        if response.status_code == 200:
+        if response.status_code == 200 and re.search(self.rgx_pagina_inicial, response.text):
             self.logger.info("Página acessada com sucesso (%s) | HTTP 200", self.loja)
             return response
 
@@ -183,7 +183,12 @@ class BaseScraper(BasePesquisa):
             raise ValueError("A página inicial não foi acessada antes da pesquisa")
 
         soup = BeautifulSoup(self._pagina_inicial.text, "html.parser")
-        for formulario in soup.find_all("form"):
+        elementos = soup.find_all(
+            "strong",
+            class_="mui-1vfiayy-menu_strong",
+            string="Departamentos"
+        )
+        for formulario in elementos:
             campos = formulario.find_all("input")
             campo_busca = next(
                 (
