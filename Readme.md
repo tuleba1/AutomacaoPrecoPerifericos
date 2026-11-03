@@ -52,9 +52,10 @@ pc-price-monitor/
    playwright install chromium
    ```
 
-3. Copie `.env.example` para `.env`, configure `PRODUCT_NAME` com o produto que
-   deseja pesquisar e ajuste `DATABASE_URL` se necessario. Opcionalmente,
-   configure `PRODUTOS_PESQUISA` para executar categorias de produtos.
+3. Copie `.env.example` para `.env` e configure apenas:
+   - `SITES_ENABLED`
+   - `PRODUCT_NAME`
+   - `SCRAPER_HEADLESS`
 
 4. Rode os scrapers:
    ```bash
@@ -65,28 +66,21 @@ pc-price-monitor/
 
 ### Pesquisa por categoria
 
-`PRODUTOS_PESQUISA` aceita templates/categorias separados por virgula e e
-aplicada a todas as lojas habilitadas. A categoria seleciona a rota; `PRODUCT_NAME`
-e o termo digitado no formulario de pesquisa da loja:
+O fluxo seleciona o template automaticamente pelo `PRODUCT_NAME` e loja
+habilitada. Exemplo:
 
 ```dotenv
 SITES_ENABLED=pichau
-PRODUTOS_PESQUISA=perifericos
 PRODUCT_NAME=mouse
+SCRAPER_HEADLESS=true
 ```
 
-O template `perifericos` da Pichau acessa `/perifericos` e pesquisa o produto
-configurado em `PRODUCT_NAME` usando o formulario encontrado nessa pagina. O
-template `teclado` acessa sua rota especializada. As URLs podem ser
-substituidas por `PICHAU_PERIFERICOS_URL` e `PICHAU_TECLADO_URL`. Cada resultado
-mantem o formato `status`, `produto`, `preco` e `etapas`; uma falha interrompe
-somente as etapas dependentes daquela categoria, e as demais categorias
-continuam sendo executadas.
+Para Pichau, a etapa `acessar_pagina` usa a URL padrão da loja
+(`https://www.pichau.com.br`) e a etapa `pesquisar_produto` monta a rota de
+listagem dinamicamente como `/perifericos/<produto>` (por exemplo:
+`mouse` → `/perifericos/mouse`, `teclado` → `/perifericos/teclado`).
 
-Quando `PRODUTOS_PESQUISA` esta ausente ou vazia, o runner tenta inferir um
-template a partir do `PRODUCT_NAME` (por exemplo, `mouse` usa `perifericos`);
-se nao houver correspondencia, usa o scraper padrao. Templates selecionados
-diretamente em `PRODUTOS_PESQUISA` usam `PRODUCT_NAME` como termo de pesquisa.
+Se não houver template mapeado para o produto, o runner usa o scraper padrão da loja.
 
 Para adicionar uma categoria:
 

@@ -24,9 +24,20 @@ CATEGORY_TEMPLATE_CATALOG: dict[str, dict[str, str]] = {
 PRODUCT_TEMPLATE_CATALOG = {
     "pichau": {
         "mouse": "perifericos",
+        "mouses": "perifericos",
+        "mousepad": "perifericos",
+        "mousepads": "perifericos",
+        "fone": "perifericos",
+        "fones": "perifericos",
         "headset": "perifericos",
+        "headsets": "perifericos",
+        "microfone": "perifericos",
+        "microfones": "perifericos",
         "monitor": "perifericos",
-        "teclado": "teclado",
+        "periferico": "perifericos",
+        "perifericos": "perifericos",
+        "teclado": "periferico",
+        "teclados": "periferico",
     },
 }
 

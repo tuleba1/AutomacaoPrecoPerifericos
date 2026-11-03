@@ -111,8 +111,8 @@ class BaseScraper(BasePesquisa):
             self.renovar_cookies()
 
         try:
-            self.logger.info("Acessando: ", self.loja)
-            response = self.session.get(self.url, timeout=30, headers=self.headers)
+            self.logger.info("Acessando %s: %s", self.loja, url)
+            response = self.session.get(url, timeout=30, headers=self.headers)
         except requests.RequestException as exc:
             self.logger.error("Erro ao acessar a página de %s: %s", self.loja, exc)
             return None
@@ -126,7 +126,7 @@ class BaseScraper(BasePesquisa):
             self.renovar_cookies()
             return self.acessar_pagina(url, _tentativa=1)
 
-        self.logger.error("Erro ao acessar %s | HTTP %s", self.url, response.status_code)
+        self.logger.error("Erro ao acessar %s | HTTP %s", url, response.status_code)
         return None
 
     def validar_pagina(self, response: requests.Response) -> bool:
