@@ -14,6 +14,22 @@ from scrapers.base.BaseScraper import BaseScraper
 
 logger = logging.getLogger(__name__)
 
+CATEGORY_TEMPLATE_CATALOG: dict[str, dict[str, str]] = {
+    "pichau": {
+        "perifericos": "scrapers.pichau.templates.perifericos.PichauPerifericosTemplate",
+        "teclado": "scrapers.pichau.templates.hardware.PichauHardwareTemplate",
+    },
+}
+
+PRODUCT_TEMPLATE_CATALOG = {
+    "pichau": {
+        "mouse": "perifericos",
+        "headset": "perifericos",
+        "monitor": "perifericos",
+        "teclado": "teclado",
+    },
+}
+
 
 class SiteFactory:
     @staticmethod
@@ -43,6 +59,41 @@ class SiteFactory:
     @classmethod
     def criar_site(cls, nome_site: str) -> BaseScraper:
         return cls._build(pegar_site(nome_site))
+
+    @classmethod
+    def criar_template_categoria(
+        cls, nome_site: str, categoria: str
+    ) -> BaseScraper | None:
+        caminho_template = CATEGORY_TEMPLATE_CATALOG.get(
+            nome_site.strip().lower(), {}
+        ).get(categoria.strip().lower())
+        if caminho_template is None:
+            return None
+
+        scraper_cls = cls._carregar_exec(caminho_template)
+        scraper = scraper_cls()
+        logger.info(
+            "Fábrica selecionou template %s | loja=%s | categoria=%s",
+            scraper_cls.__name__,
+            nome_site,
+            categoria,
+        )
+        return scraper
+
+    @classmethod
+    def criar_template_produto(
+        cls, nome_site: str, produto: str
+    ) -> BaseScraper | None:
+        loja = nome_site.strip().lower()
+        termos = set(produto.casefold().split())
+        categorias = PRODUCT_TEMPLATE_CATALOG.get(loja, {})
+        categoria = next(
+            (categorias[termo] for termo in termos if termo in categorias),
+            None,
+        )
+        if categoria is None:
+            return None
+        return cls.criar_template_categoria(loja, categoria)
 
     @classmethod
     def criar_sites_habilitados(cls) -> list[BaseScraper]:

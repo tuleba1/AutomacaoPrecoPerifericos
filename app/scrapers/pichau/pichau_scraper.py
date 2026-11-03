@@ -1,7 +1,7 @@
+import os
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 import requests
 
 from scrapers.base.BaseScraper import BaseScraper
@@ -10,7 +10,7 @@ from scrapers.base.BaseScraper import BaseScraper
 class PichauScraper(BaseScraper):
     def __init__(self):
         self.loja = "pichau"
-        self.url = "https://www.pichau.com.br"
+        self.url = os.getenv("PICHAU_URL", "https://www.pichau.com.br").rstrip("/")
         self.rgx_pagina_inicial =  (r'(?is)<title>\s*Pichau\s*-\s*'
         r'Os Melhores Preços do Brasil\s*</title>'
         )
@@ -34,19 +34,64 @@ class PichauScraper(BaseScraper):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                         "(KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
         }
+        user_agent = os.getenv("PICHAU_USER_AGENT")
+        if user_agent:
+            self.headers["User-Agent"] = user_agent
         super().__init__()
-
 
     def pesquisar_produto(self, produto: str) -> requests.Response:
         if self._pagina_inicial is None:
-            raise ValueError("A página inicial não foi acessada antes da pesquisa")
-        
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        page = browser.new_page()
+            raise ValueError("A página da categoria não foi acessada antes da pesquisa")
 
-        page.goto("https://www.pichau.com.br/perifericos/mouse")
-        page.wait_for_load_state("networkidle")
+        soup = BeautifulSoup(self._pagina_inicial.text, "html.parser")
+        for formulario in soup.find_all("form"):
+            campo_busca = next(
+                (
+                    campo
+                    for campo in formulario.find_all("input")
+                    if campo.get("name")
+                    and campo.get("type", "text").lower() in {"search", "text"}
+                ),
+                None,
+            )
+            if campo_busca is None:
+                continue
 
-        
-    browser.close()
+            metodo = formulario.get("method", "get").lower()
+            if metodo not in {"get", "post"}:
+                continue
+
+            parametros = {
+                campo["name"]: campo.get("value", "")
+                for campo in formulario.find_all("input", attrs={"type": "hidden"})
+                if campo.get("name")
+            }
+            parametros[campo_busca["name"]] = produto
+            destino = urljoin(
+                self._pagina_inicial.url,
+                formulario.get("action") or self._pagina_inicial.url,
+            )
+            if metodo == "get":
+                resposta = self.session.get(
+                    destino,
+                    params=parametros,
+                    timeout=30,
+                    headers=self.headers,
+                )
+            else:
+                resposta = self.session.post(
+                    destino,
+                    data=parametros,
+                    timeout=30,
+                    headers=self.headers,
+                )
+
+            if resposta.status_code != 200 or not resposta.text.strip():
+                raise ValueError(
+                    f"Pesquisa retornou HTTP {resposta.status_code} em {resposta.url}"
+                )
+            return resposta
+
+        raise NotImplementedError(
+            "Não foi encontrado formulário de pesquisa compatível para pichau"
+        )

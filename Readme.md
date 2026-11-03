@@ -12,18 +12,19 @@ sem mexer nas existentes.
 ```
 pc-price-monitor/
 ├── config/
-│   └── settings.py           # todas as variaveis de ambiente centralizadas
+│   ├── settings.py           # variaveis de ambiente
+│   └── sites.py              # catalogo e configuracao das lojas
 ├── database/
 │   ├── connection.py         # engine/session SQLAlchemy + PostgreSQL
 │   └── models.py             # tabela `precos` (produto, preco, loja, data_coleta)
-├── scrapers/
-│   ├── base/
-│   │   └── scraper_base.py   # classe base (Playwright + salvar no banco)
-│   ├── kabum/
-│   │   └── scraper.py
-│   ├── pichau/
-│   │   └── scraper.py
-│   └── run_scrapers.py       # roda todos os scrapers de uma vez
+├── app/
+│   ├── domain/
+│   └── scrapers/
+│       ├── base/BaseScraper.py
+│       ├── <loja>/            # scraper padrao por loja
+│       ├── pichau/templates/  # fluxos especializados por categoria
+│       ├── site_factory.py
+│       └── run_scraper.py
 ├── api/
 │   ├── main.py                # cria o app e registra os routers
 │   ├── schemas.py
@@ -31,6 +32,7 @@ pc-price-monitor/
 │       ├── produtos.py        # GET /produtos, GET /produtos/{produto}/mais-barato
 │       └── historico.py       # GET /historico/{produto}
 ├── requirements.txt
+├── main.py
 └── .env.example
 ```
 
@@ -50,12 +52,70 @@ pc-price-monitor/
    playwright install chromium
    ```
 
-3. Copie `.env.example` para `.env` e ajuste `DATABASE_URL` se necessario.
+3. Copie `.env.example` para `.env`, configure `PRODUCT_NAME` com o produto que
+   deseja pesquisar e ajuste `DATABASE_URL` se necessario. Opcionalmente,
+   configure `PRODUTOS_PESQUISA` para executar categorias de produtos.
 
-4. Rode os scrapers (cria as tabelas automaticamente na primeira execucao):
+4. Rode os scrapers:
    ```bash
-   python -m scrapers.run_scrapers
+   python main.py
    ```
+   Cada loja executa acesso, pesquisa e extração nessa ordem; uma falha impede
+   as etapas seguintes. Os resultados incluem o status e o motivo de cada etapa.
+
+### Pesquisa por categoria
+
+`PRODUTOS_PESQUISA` aceita templates/categorias separados por virgula e e
+aplicada a todas as lojas habilitadas. A categoria seleciona a rota; `PRODUCT_NAME`
+e o termo digitado no formulario de pesquisa da loja:
+
+```dotenv
+SITES_ENABLED=pichau
+PRODUTOS_PESQUISA=perifericos
+PRODUCT_NAME=mouse
+```
+
+O template `perifericos` da Pichau acessa `/perifericos` e pesquisa o produto
+configurado em `PRODUCT_NAME` usando o formulario encontrado nessa pagina. O
+template `teclado` acessa sua rota especializada. As URLs podem ser
+substituidas por `PICHAU_PERIFERICOS_URL` e `PICHAU_TECLADO_URL`. Cada resultado
+mantem o formato `status`, `produto`, `preco` e `etapas`; uma falha interrompe
+somente as etapas dependentes daquela categoria, e as demais categorias
+continuam sendo executadas.
+
+Quando `PRODUTOS_PESQUISA` esta ausente ou vazia, o runner tenta inferir um
+template a partir do `PRODUCT_NAME` (por exemplo, `mouse` usa `perifericos`);
+se nao houver correspondencia, usa o scraper padrao. Templates selecionados
+diretamente em `PRODUTOS_PESQUISA` usam `PRODUCT_NAME` como termo de pesquisa.
+
+Para adicionar uma categoria:
+
+1. Crie um template em `app/scrapers/<loja>/templates/` que herde do template
+   comum da loja ou de `BaseScraper`. Sobrescreva acesso/validacao, pesquisa ou
+   extracao somente quando a categoria exigir uma estrategia diferente.
+2. Registre a categoria em `CATEGORY_TEMPLATE_CATALOG` em
+   `app/scrapers/site_factory.py`, apontando para o caminho importavel da classe.
+3. Acrescente testes para o roteamento e para o contrato de retorno do template.
+
+Por exemplo, crie `app/scrapers/pichau/templates/headset.py`:
+
+```python
+from scrapers.pichau.pichau_scraper import PichauScraper
+from .base import configurar_rota, validar_rota
+
+
+class PichauHeadsetTemplate(PichauScraper):
+    def __init__(self):
+        super().__init__()
+        configurar_rota(self, "PICHAU_HEADSET_URL", "/perifericos/headset")
+
+    def validar_pagina(self, response):
+        return validar_rota(self, response)
+```
+
+Depois, registre `"headset": "scrapers.pichau.templates.headset.PichauHeadsetTemplate"`
+em `CATEGORY_TEMPLATE_CATALOG` e, se necessario, configure
+`PICHAU_HEADSET_URL`. Nenhuma alteracao no fluxo global e necessaria.
 
 5. Suba a API:
    ```bash
@@ -71,9 +131,12 @@ pc-price-monitor/
 
 ## Adicionando uma loja nova
 
-1. Crie `scrapers/<loja>/scraper.py` com uma classe que herda de `BaseScraper`
-   (veja `scrapers/kabum/scraper.py` como referencia).
-2. Adicione a classe na lista `SCRAPERS` em `scrapers/run_scrapers.py`.
+1. Crie o scraper em `app/scrapers/<loja>/` herdando de `BaseScraper`.
+2. Registre a loja em `SITE_CATALOGO`, em `config/sites.py`, informando o
+   caminho da classe, URL e paths.
+3. Para fluxos especializados, crie templates em
+   `app/scrapers/<loja>/templates/` e adicione cada categoria a
+   `CATEGORY_TEMPLATE_CATALOG` em `app/scrapers/site_factory.py`.
 
 ## Antes de rodar de verdade
 
@@ -82,6 +145,10 @@ sao um ponto de partida e **precisam ser conferidos no DevTools do navegador**
 contra o HTML atual dessas paginas, pois sites de e-commerce mudam o markup
 com frequencia e nao houve acesso de rede a esses dominios neste ambiente
 para validar.
+
+A implementação base pesquisa usando um formulário HTML GET/POST e extrai
+preços associados a produtos em JSON-LD. Lojas sem esse formulário ou markup
+devem sobrescrever `pesquisar_produto` ou `extrair_preco` no scraper da loja.
 
 ## Proximos passos sugeridos
 

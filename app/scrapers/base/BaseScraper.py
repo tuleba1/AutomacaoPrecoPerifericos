@@ -103,30 +103,21 @@ class BaseScraper(BasePesquisa):
     def _cookies_expirados(self) -> bool:
         return time.time() - self._cookies_obtidos_em > COOKIE_TTL
 
-
-    def _resolver_url(self, caminho: str | None = None) -> str:
-        if not caminho:
-            return self.url
-        if urlparse(caminho).scheme:
-            return caminho
-        return urljoin(self.url.rstrip("/") + "/", caminho.lstrip("/"))
-
     def acessar_pagina(
         self, url: str, _tentativa: int = 0
     ) -> requests.Response | None:
-        pagina = self._resolver_url(url)
 
         if self._cookies_expirados():
             self.renovar_cookies()
 
         try:
-            self.logger.info("Acessando %s: %s", self.loja, pagina)
-            response = self.session.get(pagina, timeout=30, headers=self.headers)
+            self.logger.info("Acessando: ", self.loja)
+            response = self.session.get(self.url, timeout=30, headers=self.headers)
         except requests.RequestException as exc:
             self.logger.error("Erro ao acessar a página de %s: %s", self.loja, exc)
             return None
 
-        if response.status_code == 200 and re.search(self.rgx_pagina_inicial, response.text):
+        if response.status_code == 200 and self.validar_pagina(response):
             self.logger.info("Página acessada com sucesso (%s) | HTTP 200", self.loja)
             return response
 
@@ -135,8 +126,14 @@ class BaseScraper(BasePesquisa):
             self.renovar_cookies()
             return self.acessar_pagina(url, _tentativa=1)
 
-        self.logger.error("Erro ao acessar %s | HTTP %s", pagina, response.status_code)
+        self.logger.error("Erro ao acessar %s | HTTP %s", self.url, response.status_code)
         return None
+
+    def validar_pagina(self, response: requests.Response) -> bool:
+        regex = getattr(self, "rgx_pagina_inicial", None)
+        if regex is None:
+            return bool(response.text.strip())
+        return bool(re.search(regex, response.text))
 
     def acessar_caminhos(self) -> list[requests.Response]:
         respostas = []
@@ -178,72 +175,10 @@ class BaseScraper(BasePesquisa):
             raise ValueError(f"Preço deve ser um número finito maior que zero: {valor!r}")
         return resultado
 
-    def pesquisar_produto(self, produto: str) -> requests.Response:
-        if self._pagina_inicial is None:
-            raise ValueError("A página inicial não foi acessada antes da pesquisa")
+    def pesquisar_produto(self, produto):
+        raise NotImplementedError
 
-        soup = BeautifulSoup(self._pagina_inicial.text, "html.parser")
-        elementos = soup.find_all(
-            "strong",
-            class_="mui-1vfiayy-menu_strong",
-            string="Departamentos"
-        )
-        for formulario in elementos:
-            campos = formulario.find_all("input")
-            campo_busca = next(
-                (
-                    campo
-                    for campo in campos
-                    if campo.get("name")
-                    and (
-                        campo.get("type", "text").lower() in {"search", "text"}
-                    )
-                ),
-                None,
-            )
-            if campo_busca is None or not campo_busca.get("name"):
-                continue
-
-            metodo = formulario.get("method", "get").lower()
-            if metodo not in {"get", "post"}:
-                continue
-
-            parametros = {}
-            for campo in formulario.find_all("input", attrs={"type": "hidden"}):
-                if campo.get("name"):
-                    parametros[campo["name"]] = campo.get("value", "")
-            parametros[campo_busca["name"]] = produto
-
-            destino = urljoin(
-                self._pagina_inicial.url,
-                formulario.get("action") or self._pagina_inicial.url,
-            )
-            self.logger.debug(
-                "Enviando pesquisa para %s pelo formulário %s",
-                destino,
-                metodo.upper(),
-            )
-            if metodo == "get":
-                resposta = self.session.get(
-                    destino, params=parametros, timeout=30, headers=self.headers
-                )
-            else:
-                resposta = self.session.post(
-                    destino, data=parametros, timeout=30, headers=self.headers
-                )
-
-            if resposta.status_code != 200:
-                raise ValueError(
-                    f"Pesquisa retornou HTTP {resposta.status_code} em {resposta.url}"
-                )
-            if not resposta.text.strip():
-                raise ValueError("A pesquisa retornou uma página vazia")
-            return resposta
-
-        raise NotImplementedError(
-            f"Não foi encontrado formulário de pesquisa compatível para {self.loja}"
-        )
-
+    
     @staticmethod
     def _percorrer_json(valor: object):
         if isinstance(valor, dict):
